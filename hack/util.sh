@@ -43,3 +43,26 @@ function util::install_helm {
     curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 }
 
+# util::exec_cmd will using eval to parse command
+function util::exec_cmd() {
+   if [ $# -eq 0 ] ; then
+     echo "[Error] no command specified for util::exec_cmd()..."
+     exit 2
+   fi
+   local tmpLog=$(mktemp)
+   set +e
+   eval "$@" &> $tmpLog
+   if [ $? -ne 0 ];then
+      echo "[Error] Failed to do $1. detail logs as below:"
+      set +x
+      echo "$(cat $tmpLog)"
+      set -x
+      rm -f $tmpLog
+      exit 3
+   fi
+   echo "$1 successful."
+   rm -f $tmpLog
+   set -e
+}
+
+

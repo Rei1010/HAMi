@@ -6,13 +6,44 @@ on:
       ref:
         required: true
         type: string
-permissions: write-all
 
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: [daocloud-runner]
     steps:
-      - name: e2e test
-        # https://github.com/actions/virtual-environments/issues/709
+
+      - name: hello
         run: |
-          echo "Need to add e2e test"
+          echo "hello world"
+
+#      - name: checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: install Go
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version: "1.21"
+
+      - name: setup env
+        env:
+          GOVC_URL: ${{ secrets.VSPHERE_SERVER }}
+          GOVC_USERNAME: ${{ secrets.VSPHERE_USER }}
+          GOVC_PASSWORD: ${{ secrets.VSPHERE_PASSWD }}
+          GOVC_DATACENTER: ${{ secrets.VSPHERE_DATACENTER }}
+          vm_name: ${{ secrets.VSPHERE_GPU_VM_NAME }}
+          vm_snapshot_name: ${{ secrets.VSPHERE_GPU_VM_NAME_SNAPSHOT }}
+        run: |
+          ls -lh
+          pwd
+          export -p
+          echo "make env-setup"
+
+      - name: helm deploy
+        env:
+          KUBE_CONF: ${{ secrets.GPU_KUBE_CONF }}
+        run: |
+          echo "make helm-deploy"
+
+      - name: e2e test
+        run: |
+          echo "make e2e-test"
