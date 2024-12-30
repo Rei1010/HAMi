@@ -46,11 +46,10 @@ jobs:
         if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
         with:
-          name: version
+          name: version.txt
           run-id: ${{ github.event.workflow_run.id }}
           repository: '${{ github.repository }}'
           github-token: ${{ env.REGISTER_PASSWORD }}
-          path: version.txt
 
       - name: Print version
         if: github.event_name == 'workflow_run'
