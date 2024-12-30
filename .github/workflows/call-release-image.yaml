@@ -82,6 +82,9 @@ jobs:
               echo "unexpected event: ${{ github.event_name }}"
               exit 1
           fi
+          echo "line 87"
+          echo "${image_ref}"
+          echo "${ci_type}"
           echo "ref=${image_ref}" >> $GITHUB_ENV
           [ -n "${image_suffix}" ] && echo "suffix=-${image_suffix}" >> $GITHUB_ENV
           if ${{ inputs.tagoverride != '' }} ; then
