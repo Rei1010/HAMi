@@ -20,6 +20,11 @@ on:
       tagoverride:
         required: false
         type: string
+  workflow_run:
+    workflows:
+      - CI Workflow
+    types:
+      - completed
 permissions: write-all
 
 jobs:
@@ -36,6 +41,25 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "=========after clean up, the left CI disk space"
           df -h
+
+      - name: Download artifact
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: version
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: '${{ github.repository }}'
+          github-token: ${{ env.REGISTER_PASSWORD }}
+          path: version.txt
+
+      - name: Print version
+        if: github.event_name == 'workflow_run'
+        run: |
+          pwd
+          ls -l
+          ls -l version.txt
+          cat version.txt/version.txt
+
       - name: Getting Image Ref
         id: ref
         run: |
@@ -43,10 +67,17 @@ jobs:
               echo "call by workflow_call"
               image_ref=${{ inputs.ref }}
               image_suffix=${{ inputs.suffix }}
+              echo "ci_type=release" >> $GITHUB_OUTPUT
           elif ${{ github.event_name == 'workflow_dispatch' }} ; then
               echo "call by workflow_dispatch"
               image_ref=${{ github.event.inputs.ref }}
               image_suffix=${{ github.event.inputs.suffix }}
+          elif ${{ github.event_name == 'workflow_run' }} ; then
+              echo "call by workflow_run"
+              VERSION=$(cat version.txt/version.txt)
+              image_ref=${VERSION}
+              echo "image_ref=${VERSION}" >> $GITHUB_OUTPUT
+              echo "ci_type=pullreques" >> $GITHUB_OUTPUT
           else
               echo "unexpected event: ${{ github.event_name }}"
               exit 1
@@ -59,6 +90,9 @@ jobs:
               # it is invalid if the ref is branch name "xx/xx/xx"
               echo "imagetag=${image_ref##*/}" >> $GITHUB_ENV
           fi
+          
+          echo "Printing all GITHUB_ENV parameters:"
+          cat $GITHUB_ENV
           exit 0
   
 
@@ -78,11 +112,11 @@ jobs:
         run: |
           make lint_dockerfile
 
-      - name: Docker Login
-        uses: docker/login-action@v3.3.0
-        with:
-            username: ${{ secrets.DOCKERHUB_TOKEN }}
-            password: ${{ secrets.DOCKERHUB_PASSWD }}
+#      - name: Docker Login
+#        uses: docker/login-action@v3.3.0
+#        with:
+#            username: ${{ secrets.DOCKERHUB_TOKEN }}
+#            password: ${{ secrets.DOCKERHUB_PASSWD }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -98,7 +132,25 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}
 
-      - name: Build & Pushing hami image
+      - name: Build & Pushing hami image (For PR)
+        if: github.event_name == 'workflow_run'
+        uses: docker/build-push-action@v6.10.0
+        with:
+          context: .
+          file: ${{ env.IMAGE_ROOT_PATH }}/Dockerfile
+          labels: ${{ env.ref }}
+          platforms: ${{ env.BUILD_PLATFORM }}
+          build-args: |
+            VERSION=${{ env.ref }}
+            GOLANG_IMAGE=golang:1.22.5-bullseye
+            NVIDIA_IMAGE=nvidia/cuda:12.2.0-devel-ubuntu20.04
+            DEST_DIR=/usr/local
+          tags: ${{ env.ref }}
+          push: false
+          github-token: ${{ env.REGISTER_PASSWORD }}
+
+      - name: Build & Pushing hami image (For Release)
+        if: github.event_name != 'workflow_run'
         uses: docker/build-push-action@v6.10.0
         with:
           context: .
@@ -111,6 +163,13 @@ jobs:
             NVIDIA_IMAGE=nvidia/cuda:12.2.0-devel-ubuntu20.04
             DEST_DIR=/usr/local
           tags: ${{ steps.meta.outputs.tags }}
-          push: true
+          push: false
           github-token: ${{ env.REGISTER_PASSWORD }}
 
+  e2e-test:
+    uses: ./.github/workflows/call-e2e.yaml
+    needs: docker-build
+    if: github.event_name == 'workflow_run'
+    with:
+      ref: ${{ needs.docker-build.outputs.image_ref }}
+      type: ${{ needs.docker-build.outputs.ci_type }}
