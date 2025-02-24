@@ -11,3 +11,4 @@
 | [Xiao Zhang](https://github.com/wawa0210)         | xiaozhang0210@hotmail.com | [DaoCloud](https://www.daocloud.io/) |
 | [Wang Leibo](https://github.com/william-wang)     | wang.platform@gmail.com | [HuaweiCloud](https://www.huaweicloud.com/) |
 | [Yin Yu](https://github.com/Nimbus318)     | yinyu@riseunion.io | [RiseUnion](http://theriseunion.com/) |
+| [Jin Ye](https://github.com/jinye)     | jinye@marvel.io | [DaoCloud](https://www.daocloud.io/) |
